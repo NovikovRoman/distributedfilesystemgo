@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"time"
 
@@ -40,17 +40,20 @@ func main() {
 
 	go func() { log.Fatal(s1.Start()) }()
 	time.Sleep(500 * time.Millisecond)
-	go func() { log.Fatal(s2.Start()) }()
 
+	go func() { log.Fatal(s2.Start()) }()
 	time.Sleep(2 * time.Second)
 
-	go s3.Start()
+	go func() { log.Fatal(s3.Start()) }()
 	time.Sleep(2 * time.Second)
 
 	for i := 0; i < 20; i++ {
 		key := fmt.Sprintf("picture_%d.png", i)
 		data := bytes.NewReader([]byte("my big data file here!"))
-		s3.Store(key, data)
+
+		if err := s3.Store(key, data); err != nil {
+			log.Fatal(err)
+		}
 
 		if err := s3.store.Delete(s3.ID, key); err != nil {
 			log.Fatal(err)
@@ -61,7 +64,7 @@ func main() {
 			log.Fatal(err)
 		}
 
-		b, err := ioutil.ReadAll(r)
+		b, err := io.ReadAll(r)
 		if err != nil {
 			log.Fatal(err)
 		}

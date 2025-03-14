@@ -11,7 +11,7 @@ import (
 
 func generateID() string {
 	buf := make([]byte, 32)
-	io.ReadFull(rand.Reader, buf)
+	_, _ = io.ReadFull(rand.Reader, buf)
 	return hex.EncodeToString(buf)
 }
 
@@ -22,7 +22,7 @@ func hashKey(key string) string {
 
 func newEncryptionKey() []byte {
 	keyBuf := make([]byte, 32)
-	io.ReadFull(rand.Reader, keyBuf)
+	_, _ = io.ReadFull(rand.Reader, keyBuf)
 	return keyBuf
 }
 

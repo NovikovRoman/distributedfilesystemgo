@@ -57,7 +57,9 @@ func (s *FileServer) broadcast(msg *Message) error {
 	}
 
 	for _, peer := range s.peers {
-		peer.Send([]byte{p2p.IncomingMessage})
+		if err := peer.Send([]byte{p2p.IncomingMessage}); err != nil {
+			return err
+		}
 		if err := peer.Send(buf.Bytes()); err != nil {
 			return err
 		}
@@ -107,7 +109,9 @@ func (s *FileServer) Get(key string) (io.Reader, error) {
 		// First read the file size so we can limit the amount of bytes that we read
 		// from the connection, so it will not keep hanging.
 		var fileSize int64
-		binary.Read(peer, binary.LittleEndian, &fileSize)
+		if err := binary.Read(peer, binary.LittleEndian, &fileSize); err != nil {
+			return nil, err
+		}
 
 		n, err := s.store.WriteDecrypt(s.EncKey, s.ID, key, io.LimitReader(peer, fileSize))
 		if err != nil {
@@ -153,7 +157,9 @@ func (s *FileServer) Store(key string, r io.Reader) error {
 		peers = append(peers, peer)
 	}
 	mw := io.MultiWriter(peers...)
-	mw.Write([]byte{p2p.IncomingStream})
+	if _, err = mw.Write([]byte{p2p.IncomingStream}); err != nil {
+		return err
+	}
 	n, err := copyEncrypt(s.EncKey, fileBuffer, mw)
 	if err != nil {
 		return err
@@ -237,8 +243,12 @@ func (s *FileServer) handleMessageGetFile(from string, msg MessageGetFile) error
 
 	// First send the "incomingStream" byte to the peer and then we can send
 	// the file size as an int64.
-	peer.Send([]byte{p2p.IncomingStream})
-	binary.Write(peer, binary.LittleEndian, fileSize)
+	if err = peer.Send([]byte{p2p.IncomingStream}); err != nil {
+		return err
+	}
+	if err = binary.Write(peer, binary.LittleEndian, fileSize); err != nil {
+		return err
+	}
 	n, err := io.Copy(peer, r)
 	if err != nil {
 		return err
@@ -267,7 +277,7 @@ func (s *FileServer) handleMessageStoreFile(from string, msg MessageStoreFile) e
 	return nil
 }
 
-func (s *FileServer) bootstrapNetwork() error {
+func (s *FileServer) bootstrapNetwork() {
 	for _, addr := range s.BootstrapNodes {
 		if len(addr) == 0 {
 			continue
@@ -280,8 +290,6 @@ func (s *FileServer) bootstrapNetwork() error {
 			}
 		}(addr)
 	}
-
-	return nil
 }
 
 func (s *FileServer) Start() error {
